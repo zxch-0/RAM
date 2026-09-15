@@ -1,0 +1,10 @@
+.git
+.gitignore
+.dockerignore
+README.md
+LICENSE
+mock_ollama.py
+__pycache__/
+*.pyc
+.venv/
+.env
