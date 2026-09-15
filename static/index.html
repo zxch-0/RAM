@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Discutez avec un modèle Ollama qui tourne dans le cloud, sans utiliser les ressources de votre PC.">
+  <title>OllamaLocloud — Ollama dans le cloud</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☁️</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ================= Barre latérale ================= -->
+    <aside id="sidebar">
+      <div class="side-head">
+        <div class="logo">☁️</div>
+        <div class="brand-block">
+          <div class="brand">OllamaLocloud</div>
+          <div class="tagline">Ollama tourne dans le cloud</div>
+        </div>
+        <button id="close-sidebar" class="icon-btn mobile-only" title="Fermer">✕</button>
+      </div>
+
+      <button id="new-chat" class="btn primary block">＋&nbsp;Nouvelle conversation</button>
+
+      <div class="side-label">Conversations</div>
+      <nav id="conv-list"></nav>
+
+      <div class="side-foot">
+        <button id="btn-models" class="btn ghost block">🧩 Modèles</button>
+        <button id="btn-settings" class="btn ghost block">⚙️ Réglages</button>
+      </div>
+    </aside>
+
+    <!-- ================= Zone principale ================= -->
+    <main>
+      <header id="topbar">
+        <button id="open-sidebar" class="icon-btn" title="Menu">☰</button>
+        <div class="top-title">
+          <span id="current-model" class="model-badge">…</span>
+          <span id="status-dot" class="dot warn"></span>
+          <span id="status-label" class="status-label">Connexion…</span>
+        </div>
+        <span class="spacer"></span>
+        <button id="btn-models-top" class="icon-btn" title="Gérer les modèles">🧩</button>
+        <button id="btn-settings-top" class="icon-btn" title="Réglages">⚙️</button>
+      </header>
+
+      <div id="banner" class="hidden"></div>
+
+      <div id="chat-scroll">
+        <div id="chat">
+
+          <div id="startup-state" class="state-box hidden">
+            <div class="spinner"></div>
+            <h2 id="startup-title">Démarrage du service…</h2>
+            <p id="startup-text">Ollama se lance dans le cloud. Cela peut prendre une minute.</p>
+            <div id="startup-progress" class="progress hidden">
+              <div id="startup-progress-bar" class="progress-bar"></div>
+            </div>
+            <p id="startup-progress-label" class="muted small hidden"></p>
+          </div>
+
+          <div id="messages"></div>
+
+          <div id="empty-state" class="hidden">
+            <div class="hero">☁️</div>
+            <h1>Ollama, mais dans le cloud</h1>
+            <p class="muted">Posez vos questions — le modèle tourne sur un serveur distant,
+              votre PC ne calcule rien.</p>
+            <div class="chips">
+              <button class="chip">Bonjour ! Présente-toi en quelques lignes.</button>
+              <button class="chip">Explique-moi ce qu'est Docker en 3 points simples.</button>
+              <button class="chip">Écris un haïku sur les nuages.</button>
+              <button class="chip">Donne-moi une recette de crêpes facile.</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <footer id="composer-wrap">
+        <div id="composer">
+          <textarea id="input" rows="1" placeholder="Posez une question au modèle…"
+            autocomplete="off"></textarea>
+          <button id="btn-send" class="btn primary round" title="Envoyer">➤</button>
+          <button id="btn-stop" class="btn danger round hidden" title="Arrêter la génération">■</button>
+        </div>
+        <div class="hint">
+          <kbd>Entrée</kbd> envoyer&nbsp;·&nbsp;<kbd>Maj</kbd>+<kbd>Entrée</kbd> nouvelle ligne
+          ·&nbsp;généré dans le cloud 🛰️
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- ================= Modale : réglages ================= -->
+  <div id="modal-settings" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>⚙️ Réglages</h3>
+        <button class="icon-btn modal-close" title="Fermer">✕</button>
+      </div>
+      <label class="field">
+        <span>Instructions système (persona du modèle)</span>
+        <textarea id="set-system" rows="4"
+          placeholder="Ex. : Tu es un assistant francophone, concis et pédagogue."></textarea>
+      </label>
+      <label class="field">
+        <span>Créativité (température)&nbsp;: <b id="set-temp-value">0.7</b></span>
+        <input type="range" id="set-temp" min="0" max="1" step="0.1" value="0.7">
+        <span class="muted small">0 = très factuel · 1 = très créatif</span>
+      </label>
+      <div class="modal-actions">
+        <button class="btn ghost modal-close">Annuler</button>
+        <button id="save-settings" class="btn primary">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Modale : modèles ================= -->
+  <div id="modal-models" class="modal-backdrop hidden">
+    <div class="modal wide">
+      <div class="modal-head">
+        <h3>🧩 Modèles</h3>
+        <button class="icon-btn modal-close" title="Fermer">✕</button>
+      </div>
+
+      <div id="pull-zone" class="hidden">
+        <div class="pull-name" id="pull-name"></div>
+        <div class="progress"><div id="pull-bar" class="progress-bar"></div></div>
+        <div id="pull-label" class="muted small"></div>
+      </div>
+
+      <div class="side-label">Installés sur le serveur</div>
+      <div id="installed-list" class="model-list"></div>
+
+      <div class="side-label">Ajouter un modèle</div>
+      <div class="custom-pull">
+        <input type="text" id="custom-model" placeholder="ex. : mistral:7b"
+          list="catalog-tags">
+        <datalist id="catalog-tags"></datalist>
+        <button id="custom-pull-btn" class="btn primary">Télécharger</button>
+      </div>
+      <div id="catalog-list" class="model-list"></div>
+      <p class="muted small">Astuce : sur l'offre gratuite (2 vCPU, 16 Go de RAM), privilégiez
+        les modèles ≤ 4 Go. Les modèles plus gros fonctionnent mais sont lents sur CPU.</p>
+    </div>
+  </div>
+
+  <!-- ================= Modale : clé d'accès ================= -->
+  <div id="modal-token" class="modal-backdrop hidden">
+    <div class="modal small">
+      <div class="modal-head">
+        <h3>🔑 Clé d'accès requise</h3>
+        <button class="icon-btn modal-close" title="Fermer">✕</button>
+      </div>
+      <p class="muted">Ce service est protégé. Saisissez la clé d'accès
+        (variable <code>APP_TOKEN</code> du serveur).</p>
+      <label class="field">
+        <input type="password" id="token-input" placeholder="Clé d'accès">
+      </label>
+      <div class="modal-actions">
+        <button class="btn ghost modal-close">Annuler</button>
+        <button id="save-token" class="btn primary">Déverrouiller</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
