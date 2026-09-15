@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="OllamaLocloud — application de discussion avec tes propres modèles d'IA, en local ou sur ton serveur. Sans filtre imposé, sans compte, sans télémétrie.">
+<title>OllamaLocloud — ton IA, chez toi</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<div id="app">
+  <aside id="sidebar" class="sidebar">
+    <div class="brand">
+      <span class="brand-logo">◍</span>
+      <div>
+        <strong>OllamaLocloud</strong>
+        <small>ton IA, chez toi</small>
+      </div>
+      <button id="close-sidebar" class="icon-btn mobile-only" title="Fermer le menu">✕</button>
+    </div>
+
+    <button id="new-chat" class="primary block">＋ Nouvelle conversation</button>
+
+    <nav id="conversation-list" class="conversations" aria-label="Conversations"></nav>
+
+    <div class="sidebar-foot">
+      <button id="btn-settings" class="ghost block">⚙︎ Réglages</button>
+      <button id="btn-guide" class="ghost block">📘 Guide &amp; modèles</button>
+      <div id="status-pill" class="status-pill" title="État du moteur de modèles">Connexion…</div>
+    </div>
+  </aside>
+
+  <main id="main" class="main">
+    <div id="scrim" class="scrim"></div>
+
+    <header id="topbar" class="topbar">
+      <button id="toggle-sidebar" class="icon-btn" title="Afficher / masquer le menu">☰</button>
+      <label class="field inline">
+        <span>Modèle</span>
+        <select id="model-select"></select>
+      </label>
+      <label class="field inline">
+        <span>Personnalité</span>
+        <select id="preset-select"></select>
+      </label>
+      <div class="topbar-spacer"></div>
+      <button id="btn-export" class="ghost" title="Exporter la conversation">⤓ Exporter</button>
+      <button id="btn-settings-2" class="ghost">⚙︎ Réglages</button>
+      <button id="btn-guide-2" class="ghost">📘 Guide</button>
+    </header>
+
+    <section id="messages" class="messages" aria-live="polite"></section>
+
+    <div id="empty-state" class="empty-state">
+      <h1>Demande ce que tu veux.</h1>
+      <p>
+        Cette application parle à <strong>tes</strong> modèles : ceux installés sur ta machine (Ollama)
+        ou ceux que tu branches toi-même sur ton serveur. Aucun filtre n'est ajouté par l'application,
+        aucune question n'est envoyée ailleurs, aucun compte n'est nécessaire.
+      </p>
+      <div class="suggestions">
+        <button data-prompt="Explique-moi simplement comment fonctionne un grand modèle de langage, et ce qui se passe réellement quand je te parle.">Comment fonctionne un LLM ?</button>
+        <button data-prompt="Quels sont les arguments pour et contre l'interdiction de tel produit, en détaillant les faits vérifiés, les hypothèses et les désaccords scientifiques ?">Un sujet clivant, en détail</button>
+        <button data-prompt="Rédige une scène de fiction tendue entre deux personnages qui s'affrontent sans jamais hausser le ton.">Écrire une scène</button>
+        <button data-prompt="Aide-moi à installer Ollama et à télécharger un modèle qui tourne sur un ordinateur avec 8 Go de RAM.">Brancher mon premier modèle</button>
+      </div>
+      <p class="hint" id="empty-hint"></p>
+    </div>
+
+    <form id="composer" class="composer">
+      <div class="composer-box">
+        <textarea id="input" rows="1" placeholder="Écris ton message… (Entrée pour envoyer, Maj+Entrée pour un saut de ligne)"></textarea>
+        <div class="composer-actions">
+          <button id="btn-stop" type="button" class="danger" hidden>■ Arrêter</button>
+          <button id="btn-regen" type="button" class="ghost" hidden title="Renvoyer la dernière question">↻ Régénérer</button>
+          <button id="btn-send" type="submit" class="primary">Envoyer ➤</button>
+        </div>
+      </div>
+      <div class="composer-foot">
+        <span id="foot-info">—</span>
+        <span id="foot-options">—</span>
+      </div>
+    </form>
+  </main>
+</div>
+
+<!-- ============================ RÉGLAGES ============================ -->
+<dialog id="settings-dialog" class="dialog">
+  <form method="dialog" class="dialog-head">
+    <h2>Réglages</h2>
+    <button class="icon-btn" value="close" title="Fermer">✕</button>
+  </form>
+  <div class="tabs">
+    <button class="tab active" data-tab="provider">Fournisseur</button>
+    <button class="tab" data-tab="models">Modèles</button>
+    <button class="tab" data-tab="persona">Personnalité</button>
+    <button class="tab" data-tab="generation">Génération</button>
+    <button class="tab" data-tab="interface">Interface</button>
+    <button class="tab" data-tab="data">Données</button>
+  </div>
+
+  <div class="dialog-body">
+    <!-- Fournisseur -->
+    <section class="tab-panel active" data-panel="provider">
+      <p class="muted">
+        L'application détecte automatiquement un serveur <strong>Ollama</strong> local. Sinon, elle utilise
+        l'<strong>API compatible OpenAI</strong> que tu indiques (OpenRouter, LM Studio, llama.cpp, vLLM…).
+      </p>
+
+      <label class="field">
+        <span>Mode</span>
+        <select id="set-provider">
+          <option value="auto">Automatique (Ollama d'abord, puis l'API distante)</option>
+          <option value="ollama">Ollama uniquement</option>
+          <option value="openai">API compatible OpenAI uniquement</option>
+        </select>
+      </label>
+
+      <h3>Ollama (local)</h3>
+      <label class="field">
+        <span>Adresse du serveur</span>
+        <input id="set-ollama-url" type="text" placeholder="http://127.0.0.1:11434" spellcheck="false">
+      </label>
+
+      <h3>API compatible OpenAI (distant / cloud)</h3>
+      <label class="field">
+        <span>URL de base</span>
+        <input id="set-openai-url" type="text" placeholder="https://openrouter.ai/api/v1" spellcheck="false">
+      </label>
+      <label class="field">
+        <span>Clé API <small class="muted">(stockée dans config.json, jamais dans git)</small></span>
+        <input id="set-openai-key" type="password" placeholder="sk-…" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>Modèle par défaut chez ce fournisseur</span>
+        <input id="set-openai-model" type="text" placeholder="cognitivecomputations/dolphin-mistral-24b-venice-edition" spellcheck="false">
+      </label>
+
+      <div class="row">
+        <button id="btn-test" class="ghost" type="button">Tester la connexion</button>
+        <button id="btn-save-config" class="primary" type="button">Enregistrer</button>
+      </div>
+      <pre id="test-result" class="console" hidden></pre>
+      <p class="muted small" id="config-path"></p>
+    </section>
+
+    <!-- Modèles -->
+    <section class="tab-panel" data-panel="models">
+      <div class="row">
+        <input id="model-filter" class="grow" type="search" placeholder="Filtrer les modèles…">
+        <button id="btn-refresh-models" class="ghost" type="button">Rafraîchir</button>
+      </div>
+      <div id="model-list" class="model-list"></div>
+
+      <h3>Télécharger un modèle (Ollama)</h3>
+      <p class="muted small">Exemples : <code>qwen3:8b</code>, <code>huihui_ai/dolphin3-abliterated:8b</code>, <code>mistral-nemo</code>, <code>gemma3:12b</code>.</p>
+      <div class="row">
+        <input id="pull-name" class="grow" type="text" placeholder="nom du modèle à télécharger" spellcheck="false">
+        <button id="btn-pull" class="primary" type="button">Télécharger</button>
+      </div>
+      <div class="progress" hidden><div class="progress-bar" id="pull-bar"></div></div>
+      <pre id="pull-log" class="console" hidden></pre>
+
+      <h3>Créer un modèle personnalisé</h3>
+      <p class="muted small">Enregistre un modèle dérivé, avec ton prompt système « cuit dedans ». Il apparaîtra ensuite dans la liste des modèles.</p>
+      <div class="grid-2">
+        <label class="field"><span>Modèle de base</span><input id="create-from" type="text" placeholder="qwen3:8b" spellcheck="false"></label>
+        <label class="field"><span>Nom du nouveau modèle</span><input id="create-name" type="text" placeholder="mon-ia-libre" spellcheck="false"></label>
+      </div>
+      <label class="field"><span>Prompt système</span><textarea id="create-system" rows="5" placeholder="Tu es…"></textarea></label>
+      <button id="btn-create" class="primary" type="button">Créer le modèle</button>
+      <pre id="create-log" class="console" hidden></pre>
+    </section>
+
+    <!-- Personnalité -->
+    <section class="tab-panel" data-panel="persona">
+      <p class="muted">
+        Le prompt système est ce qui change le plus le comportement d'un modèle — souvent plus que le choix
+        du modèle lui-même. Il est <strong>modifiable</strong> : c'est le tien.
+      </p>
+      <label class="field">
+        <span>Personnalité active</span>
+        <select id="set-preset"></select>
+      </label>
+      <label class="field">
+        <span>Prompt système envoyé au modèle</span>
+        <textarea id="set-system" rows="12" spellcheck="false"></textarea>
+      </label>
+      <div class="row">
+        <button id="btn-system-save" class="primary" type="button">Appliquer à cette conversation</button>
+        <button id="btn-system-global" class="ghost" type="button">Définir par défaut</button>
+        <button id="btn-system-reset" class="ghost" type="button">Recharger le modèle choisi</button>
+      </div>
+      <p class="muted small" id="persona-note"></p>
+    </section>
+
+    <!-- Génération -->
+    <section class="tab-panel" data-panel="generation">
+      <label class="field range">
+        <span>Température <output id="out-temp">0.80</output></span>
+        <input id="set-temp" type="range" min="0" max="2" step="0.05">
+        <small class="muted">0 = déterministe et factuel · 1+ = créatif et imprévisible</small>
+      </label>
+      <label class="field range">
+        <span>Top-p <output id="out-topp">0.95</output></span>
+        <input id="set-topp" type="range" min="0.05" max="1" step="0.05">
+      </label>
+      <div class="grid-2">
+        <label class="field"><span>Fenêtre de contexte (num_ctx)</span><input id="set-ctx" type="number" min="512" max="262144" step="512"></label>
+        <label class="field"><span>Longueur max de réponse <small class="muted">(0 = illimité)</small></span><input id="set-maxtok" type="number" min="0" max="131072" step="64"></label>
+      </div>
+      <label class="field"><span>Messages d'historique renvoyés au modèle</span><input id="set-history" type="number" min="2" max="200" step="2"></label>
+      <button id="btn-save-options" class="primary" type="button">Enregistrer ces réglages</button>
+    </section>
+
+    <!-- Interface -->
+    <section class="tab-panel" data-panel="interface">
+      <label class="field"><span>Thème</span>
+        <select id="set-theme">
+          <option value="sombre">Sombre</option>
+          <option value="clair">Clair</option>
+          <option value="systeme">Selon le système</option>
+        </select>
+      </label>
+      <label class="check"><input id="set-enter" type="checkbox"> <span>Envoyer avec la touche Entrée</span></label>
+      <label class="check"><input id="set-stream" type="checkbox"> <span>Afficher la réponse au fil de l'eau</span></label>
+      <label class="check"><input id="set-thinking" type="checkbox"> <span>Afficher le raisonnement des modèles qui en produisent (R1…)</span></label>
+    </section>
+
+    <!-- Données -->
+    <section class="tab-panel" data-panel="data">
+      <p class="muted small">
+        Les conversations restent dans <strong>ce navigateur</strong> (stockage local). Le serveur ne les
+        enregistre pas : il relaie seulement tes messages vers le modèle.
+      </p>
+      <div class="row wrap">
+        <button id="btn-export-all" class="ghost" type="button">Exporter tout (JSON)</button>
+        <button id="btn-import" class="ghost" type="button">Importer un JSON</button>
+        <input id="import-file" type="file" accept="application/json" hidden>
+        <button id="btn-wipe" class="danger" type="button">Effacer toutes les conversations</button>
+      </div>
+      <pre id="storage-info" class="console"></pre>
+    </section>
+  </div>
+</dialog>
+
+<!-- ============================== GUIDE ============================== -->
+<dialog id="guide-dialog" class="dialog wide">
+  <form method="dialog" class="dialog-head">
+    <h2>Guide &amp; modèles</h2>
+    <button class="icon-btn" value="close" title="Fermer">✕</button>
+  </form>
+  <div class="dialog-body guide">
+    <section>
+      <h3>1. Vérifier ce qui est branché</h3>
+      <p>
+        Ouvre <em>Réglages → Fournisseur → Tester la connexion</em>. Si rien ne répond, l'application passe en
+        <strong>mode démo</strong> : elle te l'annonce clairement au lieu de simuler une IA.
+      </p>
+    </section>
+
+    <section>
+      <h3>2. Modèle local, gratuit et privé</h3>
+      <pre class="console"># 1. Installer Ollama : https://ollama.com/download
+# 2. Télécharger un modèle
+ollama pull qwen3:8b
+
+# 3. Autoriser l'accès depuis le réseau (si tu ouvres l'app à d'autres)
+OLLAMA_HOST=0.0.0.0:11434 ollama serve</pre>
+      <p>Puis réglages → Fournisseur → <code>http://127.0.0.1:11434</code>.</p>
+      <p class="muted small">
+        Windows : <code>set OLLAMA_HOST=0.0.0.0:11434</code> puis <code>ollama serve</code>.
+        Si ton navigateur bloque les appels, ajoute <code>OLLAMA_ORIGINS=*</code>.
+      </p>
+    </section>
+
+    <section>
+      <h3>3. Modèles qui refusent le moins</h3>
+      <p>
+        Aucun modèle n'est totalement dépourvu de réflexes de refus, mais les modèles dits
+        <strong>abliterated</strong> (ablation des directions d'activation responsables du refus) et les
+        modèles <strong>Dolphin</strong> sont les plus directs.
+      </p>
+      <table class="table">
+        <thead><tr><th>Modèle</th><th>Taille</th><th>Remarque</th></tr></thead>
+        <tbody>
+          <tr><td><code>huihui_ai/dolphin3-abliterated:8b</code></td><td>~4,9 Go</td><td>Llama 3.1 8B sans refus, tourne sur 8 Go de RAM</td></tr>
+          <tr><td><code>huihui_ai/dolphin3-r1-abliterated:24b-mistral</code></td><td>~14 Go</td><td>Version raisonnante, meilleure mais plus lourde</td></tr>
+          <tr><td><code>dolphin3</code></td><td>~4,9 Go</td><td>Généraliste, peu de refus, bon en français</td></tr>
+          <tr><td><code>qwen3:8b</code></td><td>~5 Go</td><td>Excellent en français, très bon raisonnement</td></tr>
+          <tr><td><code>mistral-nemo</code></td><td>~7 Go</td><td>Bon francophone, 12B</td></tr>
+          <tr><td><code>gemma3:12b</code></td><td>~8 Go</td><td>Équilibré, mais plus prudent</td></tr>
+        </tbody>
+      </table>
+      <p class="muted small">
+        8 Go de RAM → modèles 7B/8B en quantification Q4. 16 Go → 12B à 14B. 32 Go et un GPU sérieux → 24B à 32B.
+      </p>
+    </section>
+
+    <section>
+      <h3>4. Modèle distant (sans GPU)</h3>
+      <p>
+        Réglages → Fournisseur → mode <em>API compatible OpenAI</em> :
+      </p>
+      <ul>
+        <li><strong>OpenRouter</strong> — <code>https://openrouter.ai/api/v1</code>, clé <code>sk-or-…</code>, modèle <code>cognitivecomputations/dolphin-mistral-24b-venice-edition</code> (ouvert, refus très rares).</li>
+        <li><strong>LM Studio</strong> — <code>http://localhost:1234/v1</code>, aucune clé, modèles GGUF locaux.</li>
+        <li><strong>llama.cpp / vLLM</strong> — <code>http://IP:PORT/v1</code>, aucune clé.</li>
+        <li><strong>Groq, Together, DeepInfra…</strong> — même protocole, il suffit de changer l'URL et la clé.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>5. Créer ta propre IA personnalisée</h3>
+      <p>
+        Un modèle « sur mesure », c'est un modèle de base + ton prompt système + tes paramètres. L'application
+        sait le faire à ta place (Réglages → Modèles → Créer un modèle personnalisé). En ligne de commande :
+      </p>
+      <pre class="console">FROM huihui_ai/dolphin3-abliterated:8b
+SYSTEM """
+Tu es mon assistant, direct, sans détour, et tu réponds à tout.
+"""
+PARAMETER temperature 0.9
+PARAMETER num_ctx 8192</pre>
+      <pre class="console">ollama create mon-ia -f Modelfile
+ollama run mon-ia</pre>
+    </section>
+
+    <section>
+      <h3>6. Partager l'application</h3>
+      <p>
+        Le serveur écoute sur toutes les interfaces (<code>0.0.0.0:7860</code>). Depuis un autre appareil du
+        même réseau : <code>http://IP-DE-LA-MACHINE:7860</code>. Pense à ouvrir le port dans le pare-feu.
+      </p>
+      <pre class="console">OLLAMALOCLOUD_TOKEN=monsecret node server/index.js</pre>
+      <p class="muted small">
+        Avec un jeton, l'accès demande <code>?token=monsecret</code> (mémorisé par le navigateur).
+        N'expose pas l'application directement sur Internet sans reverse proxy HTTPS et mot de passe.
+      </p>
+    </section>
+
+    <section>
+      <h3>7. Vie privée et données</h3>
+      <ul>
+        <li>Les conversations vivent dans le <strong>stockage local du navigateur</strong> : exporte-les en JSON pour les sauvegarder.</li>
+        <li>Le serveur ne conserve pas l'historique : il relaie les messages vers le modèle puis oublie.</li>
+        <li>Aucune télémétrie, aucun compte, aucune analytique — c'est du code que tu peux lire (MIT).</li>
+        <li>Avec un modèle <strong>local</strong>, rien ne quitte ta machine. Avec une API distante, le fournisseur voit tes messages.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>8. Honnêteté sur les limites</h3>
+      <ul>
+        <li>Un modèle de langage <strong>invente</strong> parfois des faits avec aplomb. Vérifie ce qui compte : santé, droit, argent, sécurité.</li>
+        <li>Retirer les refus ne rend pas un modèle plus compétent : sur les sujets sensibles, confronte plusieurs sources.</li>
+        <li>La liberté d'information ne dispense pas de respecter la loi de ton pays : ce que tu fais de l'outil t'appartient.</li>
+        <li>Deux garde-fous sont conservés volontairement dans la personnalité « Libre » : rien qui sexualise des mineurs, rien qui aide à nuire à une personne réelle.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>9. Dépannage</h3>
+      <table class="table">
+        <thead><tr><th>Symptôme</th><th>Cause probable / solution</th></tr></thead>
+        <tbody>
+          <tr><td>« Mode démo »</td><td>Ollama n'est pas lancé, ou l'URL est fausse. <code>ollama serve</code> puis tester la connexion.</td></tr>
+          <tr><td>Modèle introuvable (404)</td><td>Nom exact différent : <code>ollama list</code> et recopie-le tel quel.</td></tr>
+          <tr><td>Réponses très lentes</td><td>Modèle trop gros. Baisse <code>num_ctx</code> ou prends un 7B/8B en Q4.</td></tr>
+          <tr><td>Le modèle se répète ou part en boucle</td><td>Température trop basse ou <code>num_ctx</code> dépassé : réduis l'historique renvoyé.</td></tr>
+          <tr><td>Erreur 401/403</td><td>Clé API absente, expirée ou sans crédit.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

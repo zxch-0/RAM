@@ -1,0 +1,16 @@
+# Configuration locale (peut contenir une cle API : ne jamais la committer)
+config.json
+config.local.json
+
+# Donnees et exports
+data/
+exports/
+*.log
+
+# Systeme / editeurs
+node_modules/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

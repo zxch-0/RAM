@@ -1,0 +1,25 @@
+{
+  "name": "ollamalocloud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Application de discussion avec des modeles de langage locaux (Ollama) ou distants (API compatible OpenAI). Auto-hebergee, sans filtre impose, interface en francais.",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "keywords": [
+    "ollama",
+    "llm",
+    "local",
+    "self-hosted",
+    "chat",
+    "uncensored",
+    "openai-compatible"
+  ]
+}
